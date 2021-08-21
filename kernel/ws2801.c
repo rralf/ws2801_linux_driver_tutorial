@@ -27,6 +27,7 @@ struct ws2801 {
 
 	const char *name;
 	unsigned int num_leds;
+	unsigned char *leds;
 
 	struct gpio_desc *clk;
 	struct gpio_desc *data;
@@ -51,7 +52,6 @@ static ssize_t ws2801_write(struct file *fp, const char __user *ubuf,
 			    size_t cnt, loff_t *ppos)
 {
 	struct ws2801 *ws = container_of(fp->private_data, struct ws2801, misc_dev);
-	unsigned char led[3];
 	unsigned long copied;
 	size_t i;
 
@@ -60,24 +60,29 @@ static ssize_t ws2801_write(struct file *fp, const char __user *ubuf,
 		return -ERANGE;
 	}
 
-	if (cnt / BYTES_PER_LED != 1) {
+	if (cnt / BYTES_PER_LED > ws->num_leds) {
 		dev_warn(ws->dev, "Only one LED is supported\n");
 		return -EINVAL;
 	}
 
-	copied = copy_from_user(&led, ubuf, 3);
+	dev_dbg(ws->dev, "Setting %zu LEDs\n", cnt);
+	mutex_lock(&ws->mutex);
+	copied = copy_from_user(ws->leds, ubuf, cnt);
 	if (copied) {
 		dev_err(ws->dev, "Unable to copy from user\n");
-		return -EINVAL;
+		cnt = -EINVAL;
+		goto unlock_out;
 	}
+	memset(ws->leds + cnt, 0, ws->num_leds * BYTES_PER_LED - cnt);
 
-	mutex_lock(&ws->mutex);
 	preempt_disable();
-	for (i = 0; i < 3; i++)
-		ws2801_send_byte(ws, led[i]);
+	for (i = 0; i < ws->num_leds * BYTES_PER_LED; i++)
+		ws2801_send_byte(ws, ws->leds[i]);
 	gpiod_set_value(ws->clk, 0);
 	udelay(1000);
 	preempt_enable();
+
+unlock_out:
 	mutex_unlock(&ws->mutex);
 
 	return cnt;
@@ -109,6 +114,10 @@ static int ws2801_probe(struct platform_device *pdev)
 		ws->num_leds = DEFAULT_NUM_LEDS;
 	} else
 		dev_info(dev, "using %u LEDs\n", ws->num_leds);
+
+	ws->leds = devm_kzalloc(dev, ws->num_leds * BYTES_PER_LED, GFP_KERNEL);
+	if (!ws->leds)
+		return -ENOMEM;
 
 
 	ws->clk = devm_gpiod_get(dev, "clk", GPIOD_OUT_LOW);
