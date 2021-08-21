@@ -22,6 +22,8 @@
 #define DEFAULT_NUM_LEDS	20
 #define BYTES_PER_LED		3
 
+#define WS2801_IOCTL_NUM_LEDS	0
+
 struct ws2801 {
 	const struct device *dev;
 
@@ -88,9 +90,28 @@ unlock_out:
 	return cnt;
 }
 
+static long ws2801_ioctl(struct file *fp, unsigned int ioctl, unsigned long arg)
+{
+	struct ws2801 *ws = container_of(fp->private_data, struct ws2801, misc_dev);
+	long ret = -EINVAL;
+
+	switch (ioctl) {
+		case WS2801_IOCTL_NUM_LEDS:
+			ret = copy_to_user((void __user *)arg, &ws->num_leds,
+					   sizeof(ws->num_leds));
+			break;
+		default:
+			break;
+	}
+
+	return ret;
+}
+
 static const struct file_operations ws2801_fops = {
 	.owner = THIS_MODULE,
 	.write = &ws2801_write,
+	.compat_ioctl = &ws2801_ioctl,
+	.unlocked_ioctl = &ws2801_ioctl,
 };
 
 static int ws2801_probe(struct platform_device *pdev)
