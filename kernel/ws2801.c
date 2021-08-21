@@ -10,6 +10,7 @@
  * the COPYING file in the top-level directory.
  */
 
+#include <linux/delay.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -31,12 +32,25 @@ struct ws2801 {
 	struct miscdevice misc_dev;
 };
 
+static inline void ws2801_send_byte(struct ws2801 *ws, unsigned char byte)
+{
+	unsigned char mask;
+
+	for (mask = 0x80; mask; mask >>= 1) {
+		gpiod_set_value(ws->clk, 0);
+		gpiod_set_value(ws->data, (byte & mask) ? 1 : 0);
+		gpiod_set_value(ws->clk, 1);
+		udelay(1);
+	}
+}
+
 static ssize_t ws2801_write(struct file *fp, const char __user *ubuf,
 			    size_t cnt, loff_t *ppos)
 {
 	struct ws2801 *ws = container_of(fp->private_data, struct ws2801, misc_dev);
 	unsigned char led[3];
 	unsigned long copied;
+	size_t i;
 
 	if (cnt % BYTES_PER_LED != 0) {
 		dev_warn(ws->dev, "Incorrect range %zu\n", cnt);
@@ -53,6 +67,11 @@ static ssize_t ws2801_write(struct file *fp, const char __user *ubuf,
 		dev_err(ws->dev, "Unable to copy from user\n");
 		return -EINVAL;
 	}
+
+	for (i = 0; i < 3; i++)
+		ws2801_send_byte(ws, led[i]);
+	gpiod_set_value(ws->clk, 0);
+	udelay(1000);
 
 	return cnt;
 }
