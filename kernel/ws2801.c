@@ -16,9 +16,22 @@
 
 #define DRIVER_NAME	"ws2801"
 
+struct ws2801 {
+	struct gpio_desc *clk;
+	struct gpio_desc *data;
+};
+
 static int ws2801_probe(struct platform_device *pdev)
 {
-	return -1;
+	struct device *dev = &pdev->dev;
+	struct ws2801 *ws;
+
+	ws = devm_kzalloc(dev, sizeof(*ws), GFP_KERNEL);
+	if (!ws)
+		return -ENOMEM;
+	platform_set_drvdata(pdev, ws);
+
+	return 0;
 }
 
 static int ws2801_remove(struct platform_device *pdev)
