@@ -18,7 +18,11 @@
 
 #define DRIVER_NAME	"ws2801"
 
+#define BYTES_PER_LED	3
+
 struct ws2801 {
+	const struct device *dev;
+
 	const char *name;
 
 	struct gpio_desc *clk;
@@ -30,6 +34,13 @@ struct ws2801 {
 static ssize_t ws2801_write(struct file *fp, const char __user *ubuf,
 			    size_t cnt, loff_t *ppos)
 {
+	struct ws2801 *ws = container_of(fp->private_data, struct ws2801, misc_dev);
+
+	if (cnt % BYTES_PER_LED != 0) {
+		dev_warn(ws->dev, "Incorrect range %zu\n", cnt);
+		return -ERANGE;
+	}
+
 	return cnt;
 }
 
@@ -49,6 +60,7 @@ static int ws2801_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, ws);
 
+	ws->dev = dev;
 	ws->name = dev->of_node->name;
 
 	ws->clk = devm_gpiod_get(dev, "clk", GPIOD_OUT_LOW);
