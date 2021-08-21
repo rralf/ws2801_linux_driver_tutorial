@@ -10,6 +10,7 @@
  * the COPYING file in the top-level directory.
  */
 
+#include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
@@ -18,19 +19,37 @@
 #define DRIVER_NAME	"ws2801"
 
 struct ws2801 {
+	const char *name;
+
 	struct gpio_desc *clk;
 	struct gpio_desc *data;
+
+	struct miscdevice misc_dev;
+};
+
+static ssize_t ws2801_write(struct file *fp, const char __user *ubuf,
+			    size_t cnt, loff_t *ppos)
+{
+	return cnt;
+}
+
+static const struct file_operations ws2801_fops = {
+	.owner = THIS_MODULE,
+	.write = &ws2801_write,
 };
 
 static int ws2801_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct ws2801 *ws;
+	int err;
 
 	ws = devm_kzalloc(dev, sizeof(*ws), GFP_KERNEL);
 	if (!ws)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, ws);
+
+	ws->name = dev->of_node->name;
 
 	ws->clk = devm_gpiod_get(dev, "clk", GPIOD_OUT_LOW);
 	if (IS_ERR(ws->clk)) {
@@ -44,11 +63,21 @@ static int ws2801_probe(struct platform_device *pdev)
 		return PTR_ERR(ws->data);
 	}
 
-	return 0;
+	ws->misc_dev.minor = MISC_DYNAMIC_MINOR;
+	ws->misc_dev.name = ws->name;
+	ws->misc_dev.fops = &ws2801_fops;
+
+	err = misc_register(&ws->misc_dev);
+
+	return err;
 }
 
 static int ws2801_remove(struct platform_device *pdev)
 {
+	struct ws2801 *ws = platform_get_drvdata(pdev);
+
+	misc_deregister(&ws->misc_dev);
+
 	return 0;
 }
 
