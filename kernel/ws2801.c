@@ -11,14 +11,28 @@
  */
 
 #include <linux/module.h>
+#include <linux/platform_device.h>
+
+#define DRIVER_NAME	"ws2801"
+
+static struct platform_driver ws2801_driver = {
+	.driver = {
+		.name = DRIVER_NAME,
+	},
+};
 
 static int __init ws2801_module_init(void)
 {
-	return -ENOSYS;
+	int err;
+
+	err = platform_driver_register(&ws2801_driver);
+
+	return err;
 }
 
 static void __exit ws2801_module_exit(void)
 {
+	platform_driver_unregister(&ws2801_driver);
 }
 
 module_init(ws2801_module_init);
