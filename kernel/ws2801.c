@@ -12,6 +12,7 @@
 
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 
 #define DRIVER_NAME	"ws2801"
@@ -30,6 +31,18 @@ static int ws2801_probe(struct platform_device *pdev)
 	if (!ws)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, ws);
+
+	ws->clk = devm_gpiod_get(dev, "clk", GPIOD_OUT_LOW);
+	if (IS_ERR(ws->clk)) {
+		dev_err(dev, "error getting clk: %ld", PTR_ERR(ws->clk));
+		return PTR_ERR(ws->clk);
+	}
+
+	ws->data = devm_gpiod_get(dev, "data", GPIOD_OUT_LOW);
+	if (IS_ERR(ws->data)) {
+		dev_err(dev, "error getting data: %ld", PTR_ERR(ws->data));
+		return PTR_ERR(ws->data);
+	}
 
 	return 0;
 }
