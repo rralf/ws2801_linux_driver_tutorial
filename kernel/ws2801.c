@@ -29,6 +29,7 @@ struct ws2801 {
 	struct gpio_desc *clk;
 	struct gpio_desc *data;
 
+	struct mutex mutex;
 	struct miscdevice misc_dev;
 };
 
@@ -68,10 +69,14 @@ static ssize_t ws2801_write(struct file *fp, const char __user *ubuf,
 		return -EINVAL;
 	}
 
+	mutex_lock(&ws->mutex);
+	preempt_disable();
 	for (i = 0; i < 3; i++)
 		ws2801_send_byte(ws, led[i]);
 	gpiod_set_value(ws->clk, 0);
 	udelay(1000);
+	preempt_enable();
+	mutex_unlock(&ws->mutex);
 
 	return cnt;
 }
@@ -110,6 +115,8 @@ static int ws2801_probe(struct platform_device *pdev)
 	ws->misc_dev.minor = MISC_DYNAMIC_MINOR;
 	ws->misc_dev.name = ws->name;
 	ws->misc_dev.fops = &ws2801_fops;
+
+	mutex_init(&ws->mutex);
 
 	err = misc_register(&ws->misc_dev);
 
