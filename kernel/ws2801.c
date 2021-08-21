@@ -19,12 +19,14 @@
 
 #define DRIVER_NAME	"ws2801"
 
-#define BYTES_PER_LED	3
+#define DEFAULT_NUM_LEDS	20
+#define BYTES_PER_LED		3
 
 struct ws2801 {
 	const struct device *dev;
 
 	const char *name;
+	unsigned int num_leds;
 
 	struct gpio_desc *clk;
 	struct gpio_desc *data;
@@ -99,6 +101,15 @@ static int ws2801_probe(struct platform_device *pdev)
 
 	ws->dev = dev;
 	ws->name = dev->of_node->name;
+
+	err = of_property_read_u32(dev->of_node, "num-leds", &ws->num_leds);
+	if (err) {
+		dev_warn(dev,
+			 "defaulting to " __stringify(DEFAULT_NUM_LEDS) " LEDs");
+		ws->num_leds = DEFAULT_NUM_LEDS;
+	} else
+		dev_info(dev, "using %u LEDs\n", ws->num_leds);
+
 
 	ws->clk = devm_gpiod_get(dev, "clk", GPIOD_OUT_LOW);
 	if (IS_ERR(ws->clk)) {

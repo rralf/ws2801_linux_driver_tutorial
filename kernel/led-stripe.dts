@@ -15,6 +15,7 @@
                                 compatible = "ws2801";
                                 clk-gpios = <&gpio 27 GPIO_ACTIVE_HIGH>;
                                 data-gpios = <&gpio 17 GPIO_ACTIVE_HIGH>;
+				num-leds = <37>;
                                 status = "okay";
                         };
                 };
