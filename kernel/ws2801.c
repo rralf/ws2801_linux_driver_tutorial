@@ -35,10 +35,23 @@ static ssize_t ws2801_write(struct file *fp, const char __user *ubuf,
 			    size_t cnt, loff_t *ppos)
 {
 	struct ws2801 *ws = container_of(fp->private_data, struct ws2801, misc_dev);
+	unsigned char led[3];
+	unsigned long copied;
 
 	if (cnt % BYTES_PER_LED != 0) {
 		dev_warn(ws->dev, "Incorrect range %zu\n", cnt);
 		return -ERANGE;
+	}
+
+	if (cnt / BYTES_PER_LED != 1) {
+		dev_warn(ws->dev, "Only one LED is supported\n");
+		return -EINVAL;
+	}
+
+	copied = copy_from_user(&led, ubuf, 3);
+	if (copied) {
+		dev_err(ws->dev, "Unable to copy from user\n");
+		return -EINVAL;
 	}
 
 	return cnt;
