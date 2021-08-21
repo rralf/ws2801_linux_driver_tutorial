@@ -11,13 +11,24 @@
  */
 
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/platform_device.h>
 
 #define DRIVER_NAME	"ws2801"
 
+static const struct of_device_id of_ws2801_match[] = {
+	{
+		.compatible = DRIVER_NAME,
+	},
+	{},
+};
+
+MODULE_DEVICE_TABLE(of, of_ws2801_match);
+
 static struct platform_driver ws2801_driver = {
 	.driver = {
 		.name = DRIVER_NAME,
+		.of_match_table = of_ws2801_match,
 	},
 };
 
