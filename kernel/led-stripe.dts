@@ -1,0 +1,22 @@
+#include <dt-bindings/gpio/gpio.h>
+
+/dts-v1/;
+/plugin/;
+
+/ {
+        compatible = "raspberrypi,3-model-bbrcm,bcm2837";
+
+        fragment@0 {
+                target-path = "/";
+
+                __overlay__ {
+
+                        led-stripe {
+                                compatible = "ws2801";
+                                clk-gpios = <&gpio 27 GPIO_ACTIVE_HIGH>;
+                                data-gpios = <&gpio 17 GPIO_ACTIVE_HIGH>;
+                                status = "okay";
+                        };
+                };
+        };
+};
