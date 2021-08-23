@@ -50,6 +50,25 @@ static inline void ws2801_send_byte(struct ws2801 *ws, unsigned char byte)
 	}
 }
 
+static ssize_t ws2801_read(struct file *fp, char __user *ubuf, size_t cnt,
+			   loff_t *ppos)
+{
+	struct ws2801 *ws = container_of(fp->private_data, struct ws2801, misc_dev);
+	const size_t size = ws->num_leds * BYTES_PER_LED;
+	int err;
+
+	if (cnt < size)
+		return -ENOMEM;
+
+	mutex_lock(&ws->mutex);
+	err = copy_to_user(ubuf, ws->leds, size);
+	mutex_unlock(&ws->mutex);
+	if (err)
+		return -EINVAL;
+
+	return size;
+}
+
 static ssize_t ws2801_write(struct file *fp, const char __user *ubuf,
 			    size_t cnt, loff_t *ppos)
 {
@@ -109,6 +128,7 @@ static long ws2801_ioctl(struct file *fp, unsigned int ioctl, unsigned long arg)
 
 static const struct file_operations ws2801_fops = {
 	.owner = THIS_MODULE,
+	.read = &ws2801_read,
 	.write = &ws2801_write,
 	.compat_ioctl = &ws2801_ioctl,
 	.unlocked_ioctl = &ws2801_ioctl,
