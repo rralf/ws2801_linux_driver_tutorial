@@ -57,6 +57,9 @@ static ssize_t ws2801_read(struct file *fp, char __user *ubuf, size_t cnt,
 	const size_t size = ws->num_leds * BYTES_PER_LED;
 	int err;
 
+	if (*ppos)
+		return 0;
+
 	if (cnt < size)
 		return -ENOMEM;
 
@@ -65,6 +68,8 @@ static ssize_t ws2801_read(struct file *fp, char __user *ubuf, size_t cnt,
 	mutex_unlock(&ws->mutex);
 	if (err)
 		return -EINVAL;
+
+	*ppos += cnt;
 
 	return size;
 }
